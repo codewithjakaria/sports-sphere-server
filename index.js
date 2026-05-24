@@ -66,6 +66,25 @@ async function startServer() {
       }
     });
 
+    app.delete('/api/facilities/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid ID format' });
+        }
+        const result = await facilitiesCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        if (result.deletedCount === 1) {
+          res.send({ message: 'Facility deleted successfully' });
+        } else {
+          res.status(404).send({ message: 'Facility not found' });
+        }
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     app.post('/api/bookings', async (req, res) => {
       const result = await bookingsCollection.insertOne({
         ...req.body,
@@ -73,6 +92,17 @@ async function startServer() {
         createdAt: new Date(),
       });
       res.status(201).send(result);
+    });
+
+    app.get('/api/bookings', async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = email ? { user_email: email } : {};
+        const result = await bookingsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
     });
 
     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
