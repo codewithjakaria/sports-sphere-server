@@ -9,30 +9,15 @@ import { toNodeHandler } from 'better-auth/node';
 dotenv.config();
 
 const app = express();
-
 app.set('trust proxy', 1);
 
 const port = process.env.PORT || 5001;
-
 const allowedOrigins = [
   'http://localhost:3000',
   'https://sports-sphere-client-phi.vercel.app',
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  }),
-);
-
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 const client = new MongoClient(process.env.MONGODB_URI);
@@ -40,91 +25,59 @@ const client = new MongoClient(process.env.MONGODB_URI);
 async function startServer() {
   try {
     await client.connect();
-
-    console.log('✅ Connected to MongoDB');
-
     const db = client.db('Sports-Sphere');
     const bookingsCollection = db.collection('bookings');
+    const facilitiesCollection = db.collection('facilities');
 
     const auth = betterAuth({
       database: mongodbAdapter(db),
-      emailAndPassword: {
-        enabled: true,
-      },
+      emailAndPassword: { enabled: true },
       baseURL: process.env.BETTER_AUTH_URL,
       secret: process.env.BETTER_AUTH_SECRET,
       trustedOrigins: allowedOrigins,
-      advanced: {
-        defaultCookieAttributes: {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'none',
-        },
-      },
     });
 
     app.all('/api/auth/*', toNodeHandler(auth));
 
-    app.post('/api/bookings', async (req, res) => {
-      try {
-        const bookingData = req.body;
-        const newBooking = {
-          ...bookingData,
-          status: 'pending',
-          createdAt: new Date(),
-        };
-        const result = await bookingsCollection.insertOne(newBooking);
-        res.status(201).send(result);
-      } catch (error) {
-        res.status(500).send({
-          message: 'Failed to save booking',
-        });
-      }
+    app.post('/api/facilities', async (req, res) => {
+      const result = await facilitiesCollection.insertOne(req.body);
+      res.status(201).send(result);
     });
 
-    app.get('/api/bookings', async (req, res) => {
-      try {
-        const email = req.query.email;
-        const result = await bookingsCollection
-          .find({ user_email: email })
-          .toArray();
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({
-          message: 'Failed to fetch bookings',
-        });
-      }
+    app.get('/api/facilities', async (req, res) => {
+      const result = await facilitiesCollection.find().toArray();
+      res.send(result);
     });
 
-    app.patch('/api/bookings/:id', async (req, res) => {
+    app.get('/api/facilities/:id', async (req, res) => {
       try {
         const id = req.params.id;
-        const result = await bookingsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          {
-            $set: {
-              status: 'cancelled',
-            },
-          },
-        );
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({
-          message: 'Failed to cancel booking',
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid ID format' });
+        }
+        const result = await facilitiesCollection.findOne({
+          _id: new ObjectId(id),
         });
+        result
+          ? res.send(result)
+          : res.status(404).send({ message: 'Not Found' });
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
       }
     });
 
-    app.get('/', (req, res) => {
-      res.send('Server is running...');
+    app.post('/api/bookings', async (req, res) => {
+      const result = await bookingsCollection.insertOne({
+        ...req.body,
+        status: 'pending',
+        createdAt: new Date(),
+      });
+      res.status(201).send(result);
     });
 
-    app.listen(port, () => {
-      console.log(`🚀 Server running on port ${port}`);
-    });
+    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error);
+    console.error('Server connection error:', error);
   }
 }
-
 startServer();
