@@ -1,3 +1,187 @@
+// import express from 'express';
+// import cors from 'cors';
+// import { MongoClient, ObjectId } from 'mongodb';
+// import dotenv from 'dotenv';
+// import { betterAuth } from 'better-auth';
+// import { mongodbAdapter } from 'better-auth/adapters/mongodb';
+// import { toNodeHandler } from 'better-auth/node';
+
+// dotenv.config();
+
+// const app = express();
+// app.set('trust proxy', 1);
+
+// const port = process.env.PORT || 5001;
+// const allowedOrigins = [
+//   'http://localhost:3000',
+//   'https://sports-sphere-client-phi.vercel.app',
+//   'https://sports-sphere-server-ka4s.onrender.com',
+// ];
+
+// app.use(cors({ origin: allowedOrigins, credentials: true }));
+// app.use(express.json());
+
+// const client = new MongoClient(process.env.MONGODB_URI);
+
+// async function startServer() {
+//   try {
+//     await client.connect();
+//     const db = client.db('Sports-Sphere');
+//     const bookingsCollection = db.collection('bookings');
+//     const facilitiesCollection = db.collection('facilities');
+
+//     const auth = betterAuth({
+//       database: mongodbAdapter(db),
+//       emailAndPassword: { enabled: true },
+//       baseURL: process.env.BETTER_AUTH_URL,
+//       secret: process.env.BETTER_AUTH_SECRET,
+//       trustedOrigins: allowedOrigins,
+//     });
+
+//     app.all('/api/auth/*', toNodeHandler(auth));
+
+//     app.post('/api/facilities', async (req, res) => {
+//       const result = await facilitiesCollection.insertOne(req.body);
+//       res.status(201).send(result);
+//     });
+
+//     app.get('/api/facilities', async (req, res) => {
+//       const result = await facilitiesCollection.find().toArray();
+//       res.send(result);
+//     });
+
+//     app.get('/api/facilities/:id', async (req, res) => {
+//       try {
+//         const id = req.params.id;
+//         if (!ObjectId.isValid(id))
+//           return res.status(400).send({ message: 'Invalid ID format' });
+//         const result = await facilitiesCollection.findOne({
+//           _id: new ObjectId(id),
+//         });
+//         result
+//           ? res.send(result)
+//           : res.status(404).send({ message: 'Not Found' });
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.delete('/api/facilities/:id', async (req, res) => {
+//       try {
+//         const id = req.params.id;
+//         if (!ObjectId.isValid(id))
+//           return res.status(400).send({ message: 'Invalid ID format' });
+//         const result = await facilitiesCollection.deleteOne({
+//           _id: new ObjectId(id),
+//         });
+//         result.deletedCount === 1
+//           ? res.send({ message: 'Deleted' })
+//           : res.status(404).send({ message: 'Not found' });
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.post('/api/bookings', async (req, res) => {
+//       const result = await bookingsCollection.insertOne({
+//         ...req.body,
+//         status: 'pending',
+//         createdAt: new Date(),
+//       });
+//       res.status(201).send(result);
+//     });
+
+//     app.get('/api/bookings', async (req, res) => {
+//       try {
+//         const email = req.query.email;
+//         const query = email ? { user_email: email } : {};
+//         const result = await bookingsCollection.find(query).toArray();
+//         res.send(result);
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.delete('/api/bookings/:id', async (req, res) => {
+//       try {
+//         const id = req.params.id;
+//         if (!ObjectId.isValid(id))
+//           return res.status(400).send({ message: 'Invalid ID' });
+//         const result = await bookingsCollection.deleteOne({
+//           _id: new ObjectId(id),
+//         });
+//         result.deletedCount === 1
+//           ? res.send({ message: 'Booking deleted' })
+//           : res.status(404).send({ message: 'Booking not found' });
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.get('/api/my-facilities', async (req, res) => {
+//       try {
+//         const email = req.query.email;
+//         const result = await facilitiesCollection
+//           .find({ owner_email: email })
+//           .toArray();
+//         res.send(result);
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.patch('/api/facilities/:id', async (req, res) => {
+//       try {
+//         const id = req.params.id;
+//         const result = await facilitiesCollection.updateOne(
+//           { _id: new ObjectId(id) },
+//           { $set: req.body },
+//         );
+//         res.send({ message: 'Updated successfully' });
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.patch('/api/bookings/:id', async (req, res) => {
+//       try {
+//         const id = req.params.id;
+//         if (!ObjectId.isValid(id))
+//           return res.status(400).send({ message: 'Invalid ID' });
+//         const result = await bookingsCollection.updateOne(
+//           { _id: new ObjectId(id) },
+//           { $set: { status: 'cancelled' } },
+//         );
+//         result.modifiedCount === 1
+//           ? res.send({ message: 'Booking cancelled' })
+//           : res.status(404).send({ message: 'Booking not found' });
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+//     app.put('/api/facilities/:id', async (req, res) => {
+//       try {
+//         const id = req.params.id;
+//         if (!ObjectId.isValid(id))
+//           return res.status(400).send({ message: 'Invalid ID' });
+//         const { _id, ...updatedData } = req.body;
+//         const result = await facilitiesCollection.updateOne(
+//           { _id: new ObjectId(id) },
+//           { $set: updatedData },
+//         );
+//         res.send({ message: 'Updated successfully' });
+//       } catch (error) {
+//         res.status(500).send({ message: 'Server Error' });
+//       }
+//     });
+
+//     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+//   } catch (error) {
+//     console.error('Server connection error:', error);
+//   }
+// }
+// startServer();
+
 import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
@@ -12,12 +196,19 @@ const app = express();
 app.set('trust proxy', 1);
 
 const port = process.env.PORT || 5001;
+
+// CORS কনফিগারেশন: Vercel ডোমেইন যোগ করা হয়েছে
 const allowedOrigins = [
   'http://localhost:3000',
   'https://sports-sphere-client-phi.vercel.app',
 ];
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 const client = new MongoClient(process.env.MONGODB_URI);
@@ -29,6 +220,7 @@ async function startServer() {
     const bookingsCollection = db.collection('bookings');
     const facilitiesCollection = db.collection('facilities');
 
+    // Better Auth কনফিগারেশন
     const auth = betterAuth({
       database: mongodbAdapter(db),
       emailAndPassword: { enabled: true },
@@ -39,22 +231,30 @@ async function startServer() {
 
     app.all('/api/auth/*', toNodeHandler(auth));
 
+    // --- Facility Routes ---
     app.post('/api/facilities', async (req, res) => {
-      const result = await facilitiesCollection.insertOne(req.body);
-      res.status(201).send(result);
+      try {
+        const result = await facilitiesCollection.insertOne(req.body);
+        res.status(201).send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Error adding facility' });
+      }
     });
 
     app.get('/api/facilities', async (req, res) => {
-      const result = await facilitiesCollection.find().toArray();
-      res.send(result);
+      try {
+        const result = await facilitiesCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
     });
 
     app.get('/api/facilities/:id', async (req, res) => {
       try {
         const id = req.params.id;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ message: 'Invalid ID format' });
-        }
+        if (!ObjectId.isValid(id))
+          return res.status(400).send({ message: 'Invalid ID' });
         const result = await facilitiesCollection.findOne({
           _id: new ObjectId(id),
         });
@@ -69,29 +269,60 @@ async function startServer() {
     app.delete('/api/facilities/:id', async (req, res) => {
       try {
         const id = req.params.id;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ message: 'Invalid ID format' });
-        }
+        if (!ObjectId.isValid(id))
+          return res.status(400).send({ message: 'Invalid ID' });
         const result = await facilitiesCollection.deleteOne({
           _id: new ObjectId(id),
         });
-        if (result.deletedCount === 1) {
-          res.send({ message: 'Facility deleted successfully' });
-        } else {
-          res.status(404).send({ message: 'Facility not found' });
-        }
+        result.deletedCount === 1
+          ? res.send({ message: 'Deleted' })
+          : res.status(404).send({ message: 'Not found' });
       } catch (error) {
         res.status(500).send({ message: 'Server Error' });
       }
     });
 
+    app.get('/api/my-facilities', async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) return res.status(400).send({ message: 'Email required' });
+        const result = await facilitiesCollection
+          .find({ owner_email: email })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
+    app.put('/api/facilities/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id))
+          return res.status(400).send({ message: 'Invalid ID' });
+        const { _id, ...updatedData } = req.body;
+        const result = await facilitiesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData },
+        );
+        res.send({ message: 'Updated successfully' });
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
+    // --- Booking Routes ---
     app.post('/api/bookings', async (req, res) => {
-      const result = await bookingsCollection.insertOne({
-        ...req.body,
-        status: 'pending',
-        createdAt: new Date(),
-      });
-      res.status(201).send(result);
+      try {
+        const result = await bookingsCollection.insertOne({
+          ...req.body,
+          status: 'pending',
+          createdAt: new Date(),
+        });
+        res.status(201).send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
     });
 
     app.get('/api/bookings', async (req, res) => {
@@ -105,9 +336,43 @@ async function startServer() {
       }
     });
 
+    app.delete('/api/bookings/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id))
+          return res.status(400).send({ message: 'Invalid ID' });
+        const result = await bookingsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        result.deletedCount === 1
+          ? res.send({ message: 'Deleted' })
+          : res.status(404).send({ message: 'Not found' });
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
+    app.patch('/api/bookings/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id))
+          return res.status(400).send({ message: 'Invalid ID' });
+        const result = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: 'cancelled' } },
+        );
+        result.modifiedCount === 1
+          ? res.send({ message: 'Cancelled' })
+          : res.status(404).send({ message: 'Not found' });
+      } catch (error) {
+        res.status(500).send({ message: 'Server Error' });
+      }
+    });
+
     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
     console.error('Server connection error:', error);
   }
 }
+
 startServer();
