@@ -6,6 +6,7 @@ import { betterAuth } from 'better-auth';
 import { mongodbAdapter } from 'better-auth/adapters/mongodb';
 import { toNodeHandler } from 'better-auth/node';
 
+
 dotenv.config();
 
 const app = express();
@@ -34,6 +35,7 @@ async function startServer() {
     const db = client.db('Sports-Sphere');
     const bookingsCollection = db.collection('bookings');
     const facilitiesCollection = db.collection('facilities');
+    const usersCollection = db.collection('users');
 
     const auth = betterAuth({
       database: mongodbAdapter(db),
@@ -182,6 +184,33 @@ async function startServer() {
         res.status(500).send({ message: 'Server Error' });
       }
     });
+    // --- USER PROFILE UPDATE ---
+  app.put('/api/user/profile', async (req, res) => {
+    try {
+      const { email, name, image } = req.body;
+
+      if (!email) {
+        return res.status(400).send({ message: 'Email required' });
+      }
+
+      const result = await usersCollection.updateOne(
+        { email: email },
+        { $set: { name: name, image: image } },
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).send({ message: 'User not found' });
+      }
+
+      res.send({
+        message: 'Profile updated successfully',
+        result,
+      });
+    } catch (error) {
+      console.error('Profile Update Error:', error);
+      res.status(500).send({ message: 'Server Error' });
+    }
+  });
 
     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
