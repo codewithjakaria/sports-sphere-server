@@ -273,9 +273,7 @@ async function startServer() {
     const facilitiesCollection = db.collection('facilities');
     const usersCollection = db.collection('users');
 
-    // =========================
-    // BETTER AUTH CONFIG
-    // =========================
+  
     const auth = betterAuth({
       database: mongodbAdapter(db),
 
@@ -284,10 +282,17 @@ async function startServer() {
       },
 
       baseURL: process.env.BETTER_AUTH_URL,
-
       secret: process.env.BETTER_AUTH_SECRET,
-
       trustedOrigins: allowedOrigins,
+
+    
+      cookies: {
+        session: {
+          name: 'auth_session',
+          sameSite: 'none', 
+          secure: true, 
+        },
+      },
     });
 
     // Better Auth Route
