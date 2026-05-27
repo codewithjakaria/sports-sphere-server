@@ -43,6 +43,15 @@ async function startServer() {
       baseURL: process.env.BETTER_AUTH_URL,
       secret: process.env.BETTER_AUTH_SECRET,
       trustedOrigins: allowedOrigins,
+
+     
+      cookies: {
+        session: {
+          name: 'auth_session',
+          sameSite: 'none', 
+          secure: true,
+        },
+      },
     });
 
     app.all('/api/auth/*', toNodeHandler(auth));
