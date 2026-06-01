@@ -54,6 +54,7 @@ async function startServer() {
         google: {
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          redirectURI: `${process.env.BETTER_AUTH_URL}/api/auth/callback/google`,
         },
       },
 
@@ -68,6 +69,7 @@ async function startServer() {
           sameSite: isProd ? 'none' : 'lax',
           ...(isProd && { partitioned: true }),
         },
+        redirectTo: process.env.CLIENT_URL,
       },
     });
 
